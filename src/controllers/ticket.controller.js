@@ -6,13 +6,13 @@ exports.createTicket = async (req, res) => {
     return res.status(400).json({ message: 'Bot detected.' });
   }
 
-  const { nombre, email, telefono, establecimiento, direccion, marca, modelo, n_serie, consulta } = req.body;
+  const { nombre, email, telefono, establecimiento, direccion, marca, modelo, n_serie, consulta, usuario_id } = req.body;
 
   try {
     await db.query(
-      `INSERT INTO tickets (nombre, email, telefono, establecimiento, direccion, marca, modelo, n_serie, consulta) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-      [nombre, email, telefono, establecimiento, direccion, marca, modelo, n_serie, consulta]
+      `INSERT INTO tickets (nombre, email, telefono, establecimiento, direccion, marca, modelo, n_serie, consulta, usuario_id) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+      [nombre, email, telefono, establecimiento, direccion, marca, modelo, n_serie, consulta, usuario_id]
     );
     res.status(201).json({ message: 'Ticket created successfully' });
   } catch (error) {
@@ -51,8 +51,8 @@ exports.getTickets = async (req, res) => {
     let params = [];
 
     if (user.role === 'Cliente') {
-      query += ' WHERE email = $1';
-      params = [user.email];
+      query += ' WHERE usuario_id = $1 OR email = $2';
+      params = [user.id, user.email];
     } else if (user.role === 'Técnico') {
        // Filter by assigned technician - this assumes we have a column for it
        // query += ' WHERE tecnico_asignado_id = $1';
