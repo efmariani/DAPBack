@@ -30,10 +30,13 @@ exports.updateRole = async (req, res) => {
 exports.resetPassword = async (req, res) => {
   const { id } = req.params;
   const { newPassword } = req.body;
+  const isAdminReset = req.user.id !== id; // Check if it's an admin resetting another user's password
 
   try {
     const hashedPassword = await bcrypt.hash(newPassword, 10);
-    await db.query('UPDATE usuarios SET password = $1 WHERE id = $2', [hashedPassword, id]);
+    // If it's an admin reset, we set must_change_password = true
+    const query = 'UPDATE usuarios SET password = $1, must_change_password = $2 WHERE id = $3';
+    await db.query(query, [hashedPassword, isAdminReset, id]);
     res.json({ message: 'Password reset successfully' });
   } catch (error) {
     res.status(500).json({ message: 'Error resetting password' });

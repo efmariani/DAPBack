@@ -80,18 +80,27 @@ exports.deleteTicket = async (req, res) => {
 };
 
 // Internal function to build the rules-based filter
-const buildRulesFilter = async (user) => {
-  if (user.role === 'Administrador') return { condition: 'TRUE', params: [] };
+const buildRulesFilter = async (user, previewRole = null) => {
+  const activeRole = (user.role === 'Administrador' && previewRole) ? previewRole : user.role;
+  
+  // If truly an Admin and NOT previewing, they see everything
+  if (user.role === 'Administrador' && !previewRole) return { condition: 'TRUE', params: [] };
 
+  // If we are in preview mode or are a regular tech/client
   const rulesResult = await db.query('SELECT campo, valor FROM reglas_filtrado WHERE usuario_id = $1', [user.id]);
   const rules = rulesResult.rows;
 
   if (rules.length === 0) {
-    // If NO rules are set, should they see only their own tickets?
-    // Let's assume ONLY tickets created by them or their email.
+    // Standard behavior for Tech/Client without specific rules: see their own/assigned
+    if (activeRole === 'Cliente') {
+      return { condition: '(email = $1 OR usuario_id = $2)', params: [user.email, user.id] };
+    }
+    // For Technician or Admin-previewing-as-Tech, if no rules, maybe they see assigned tickets?
+    // Let's stick to the current logic but respect the previewRole if applicable
     return { condition: '(usuario_id = $1 OR email = $2)', params: [user.id, user.email] };
   }
 
+  const offset = 0; // Starting index for params
   const conditions = rules.map((r, i) => `${r.campo} = $${i + 1}`);
   return { 
     condition: `(${conditions.join(' OR ')})`, 
@@ -101,10 +110,10 @@ const buildRulesFilter = async (user) => {
 
 exports.getTickets = async (req, res) => {
   const { user } = req;
-  const { estado } = req.query; // Optional filter by status
+  const { estado, preview_as } = req.query; // Optional filters
 
   try {
-    const filter = await buildRulesFilter(user);
+    const filter = await buildRulesFilter(user, preview_as);
     let query = `SELECT * FROM tickets WHERE ${filter.condition}`;
     let params = [...filter.params];
 
@@ -125,23 +134,29 @@ exports.getTickets = async (req, res) => {
 
 exports.searchTickets = async (req, res) => {
   const { user } = req;
-  const { q, field } = req.query; // Search query and optional field
+  const { q, field, preview_as, estado } = req.query;
 
   try {
-    const filter = await buildRulesFilter(user);
+    const filter = await buildRulesFilter(user, preview_as);
     let query = `SELECT * FROM tickets WHERE ${filter.condition}`;
     let params = [...filter.params];
 
     if (q) {
-      if (field) {
+      if (field && field !== 'all') {
         query += ` AND ${field} ILIKE $${params.length + 1}`;
         params.push(`%${q}%`);
       } else {
-        // Generic search on multiple fields
-        query += ` AND (nombre ILIKE $${params.length + 1} OR establecimiento ILIKE $${params.length + 1} OR n_serie ILIKE $${params.length + 1})`;
+        query += ` AND (nombre ILIKE $${params.length + 1} OR establecimiento ILIKE $${params.length + 1} OR n_serie ILIKE $${params.length + 1} OR email ILIKE $${params.length + 1})`;
         params.push(`%${q}%`);
       }
     }
+
+    if (estado) {
+      query += ` AND estado = $${params.length + 1}`;
+      params.push(estado);
+    }
+
+    query += ' ORDER BY created_at DESC';
 
     const result = await db.query(query, params);
     res.json(result.rows);

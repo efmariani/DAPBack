@@ -55,7 +55,7 @@ exports.login = async (req, res) => {
 
     res.json({
       token,
-      user: { id: user.id, nombre: user.nombre, email: user.email, role: user.role }
+      user: { id: user.id, nombre: user.nombre, email: user.email, role: user.role, must_change_password: user.must_change_password }
     });
   } catch (error) {
     console.error(error);
