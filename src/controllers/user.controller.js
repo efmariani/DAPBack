@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 exports.getUsers = async (req, res) => {
   try {
     const result = await db.query(
-      'SELECT u.id, u.nombre, u.email, r.nombre as role FROM usuarios u JOIN roles r ON u.rol_id = r.id'
+      'SELECT u.id, u.nombre, u.email, r.nombre as role, u.columnas_visibles FROM usuarios u JOIN roles r ON u.rol_id = r.id'
     );
     res.json(result.rows);
   } catch (error) {
@@ -51,5 +51,16 @@ exports.deleteUser = async (req, res) => {
     res.json({ message: 'User deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: 'Error deleting user' });
+  }
+};
+exports.updateColumns = async (req, res) => {
+  const { id } = req.params;
+  const { columns } = req.body; // e.g., '0,1,3'
+
+  try {
+    await db.query('UPDATE usuarios SET columnas_visibles = $1 WHERE id = $2', [columns, id]);
+    res.json({ message: 'Preferred columns updated' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error updating columns' });
   }
 };

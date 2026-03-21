@@ -55,7 +55,14 @@ exports.login = async (req, res) => {
 
     res.json({
       token,
-      user: { id: user.id, nombre: user.nombre, email: user.email, role: user.role, must_change_password: user.must_change_password }
+      user: {
+        id: user.id,
+        nombre: user.nombre,
+        email: user.email,
+        role: user.role,
+        must_change_password: user.must_change_password,
+        columnas_visibles: user.columnas_visibles || '0,1,2,3,4'
+      }
     });
   } catch (error) {
     console.error(error);

@@ -10,6 +10,7 @@ router.use(isAdmin);
 router.get('/', userController.getUsers);
 router.patch('/:id/role', userController.updateRole);
 router.patch('/:id/reset-password', userController.resetPassword);
+router.patch('/:id/columns', userController.updateColumns);
 router.delete('/:id', userController.deleteUser);
 
 // Rules management
